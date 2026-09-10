@@ -45,6 +45,7 @@ export const ServiceInstanceCreate = z.object({
   config: z.record(z.string(), z.unknown()).default({}),
   rpm: z.number().int().positive().default(60),
   maxConcurrency: z.number().int().positive().default(3),
+  proxyUrl: z.string().optional(), // 只对这个实例生效的代理地址（readme.md 7.6），留空走全局代理/直连
   enabled: z.boolean().default(true),
 });
 export type ServiceInstanceCreate = z.infer<typeof ServiceInstanceCreate>;
@@ -62,6 +63,7 @@ export const ServiceInstanceView = z.object({
   config: z.record(z.string(), z.unknown()),
   rpm: z.number().int(),
   maxConcurrency: z.number().int(),
+  proxyUrl: z.string().nullable(),
   enabled: z.boolean(),
   createdAt: z.string(),
 });

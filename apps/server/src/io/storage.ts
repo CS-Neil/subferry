@@ -30,6 +30,11 @@ export function readTextFile(path: string): string {
   return readFileSync(path, 'utf8');
 }
 
+/** 读原始字节（不假定编码），用于重新解析等需要拿到原始上传内容的场景。 */
+export function readFileBuffer(path: string): Buffer {
+  return readFileSync(path);
+}
+
 export function fileExists(path: string): boolean {
   return existsSync(path);
 }

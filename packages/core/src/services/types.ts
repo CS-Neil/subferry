@@ -27,8 +27,8 @@ export interface BatchRequest {
   contextAfter: BatchItem[];
   from: string;
   to: string;
-  synopsis?: string; // M1 恒为空字符串，术语表/项目简介是 M2 功能
-  glossary?: string; // 同上
+  synopsis?: string; // 项目简介（M2 起可用，未归属项目的任务仍为空）
+  glossary?: string; // 已确认且在本批实际出现的术语（M2 起可用），见 pipeline/glossary.ts
   /** 上一次失败的具体问题说明，重试时附加到用户消息，帮助模型理解要修正什么（pipeline/retry.ts 使用）。 */
   retryNote?: string;
 }
@@ -40,6 +40,12 @@ export interface TranslateService {
   translate(text: string, from: string, to: string, opts: CallOptions): Promise<string>;
   /** 批量扩展：返回模型的原始回复字符串（未解析），解析/校验是 pipeline/validator.ts 的职责。 */
   translateBatch?(req: BatchRequest, opts: CallOptions): Promise<string>;
+  /**
+   * 通用单次对话：system/user 均由调用方提供，不走翻译批次的 id-JSON 协议。
+   * 供术语自动提取等"非翻译"场景使用（见 pipeline/glossary.ts）。未实现时，
+   * 依赖它的功能会被跳过（例如该服务实例创建的任务不做术语自动提取）。
+   */
+  chat?(system: string, user: string, opts: CallOptions): Promise<string>;
 }
 
 /**

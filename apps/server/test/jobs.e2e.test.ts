@@ -68,7 +68,7 @@ describe('任务端到端流程（上传 → mock 翻译 → 下载）', () => {
     await createMockService(app, cookie);
 
     const { body, contentType } = buildMultipart(
-      { serviceInstanceId: 'mock@test', srcLang: 'ko', tgtLang: 'zh_cn' },
+      { serviceInstanceId: 'mock@test', srcLang: 'ko', tgtLang: 'zh_cn', options: JSON.stringify({ skipReview: true }) },
       { fieldname: 'file', filename: 'movie.ko.srt', content: SAMPLE_SRT },
     );
     const uploadRes = await app.inject({

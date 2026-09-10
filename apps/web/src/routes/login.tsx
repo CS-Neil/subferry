@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TextScramble } from '@/components/motion/text-scramble';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -48,7 +49,9 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-1 text-2xl font-semibold">字渡 SubFerry</h1>
+      <h1 className="mb-1 text-2xl font-semibold">
+        <TextScramble text="字渡 SubFerry" />
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         {needsInit ? '首次访问，设置管理员密码' : '登录以继续'}
       </p>

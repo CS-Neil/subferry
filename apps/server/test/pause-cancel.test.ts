@@ -43,7 +43,7 @@ async function loginAsNewAdmin(testApp: TestApp): Promise<string> {
 
 async function uploadJob(testApp: TestApp, cookie: string, serviceInstanceId: string): Promise<string> {
   const { body, contentType } = buildMultipart(
-    { serviceInstanceId, srcLang: 'ko', tgtLang: 'zh_cn' },
+    { serviceInstanceId, srcLang: 'ko', tgtLang: 'zh_cn', options: JSON.stringify({ skipReview: true }) },
     { fieldname: 'file', filename: 'movie.ko.srt', content: SAMPLE_SRT },
   );
   const res = await testApp.app.inject({

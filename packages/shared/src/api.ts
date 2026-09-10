@@ -27,7 +27,9 @@ export const UploadJobResponse = z.object({
 export type UploadJobResponse = z.infer<typeof UploadJobResponse>;
 
 export const CreateJobOptions = z.object({
-  serviceInstanceId: z.string(),
+  serviceInstanceId: z.string().optional(), // 未提供时从 profileId 对应的方案取默认服务实例
+  profileId: z.string().optional(), // 提供翻译方案 id 时，先应用方案的默认值，再被本次显式传入的字段覆盖
+  projectId: z.string().optional(),
   srcLang: z.string().optional(),
   tgtLang: z.string().default('zh_cn'),
   options: JobOptions.partial().optional(),

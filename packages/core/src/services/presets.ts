@@ -141,5 +141,17 @@ export function createOpenAICompatibleService(preset: OpenAICompatiblePreset): T
         opts,
       );
     },
+
+    async chat(system, user, opts) {
+      const config = resolveConfig(opts.config);
+      return callChatCompletions(
+        config,
+        [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        opts,
+      );
+    },
   };
 }

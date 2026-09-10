@@ -1,6 +1,7 @@
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { getService, listServices, defaultHttpClient } from '@subferry/core';
+import { wrapWithInstanceProxy } from '../net/proxy.js';
 import { ServiceInstanceCreate, ServiceInstanceUpdate } from '@subferry/shared';
 import type { DB } from '../db/client.js';
 import { serviceInstances } from '../db/schema.js';
@@ -69,6 +70,7 @@ export function registerServiceRoutes(
         secretEnc,
         rpm: parsed.data.rpm,
         maxConcurrency: parsed.data.maxConcurrency,
+        proxyUrl: parsed.data.proxyUrl ?? null,
         enabled: parsed.data.enabled,
         createdAt: new Date().toISOString(),
       })
@@ -105,6 +107,7 @@ export function registerServiceRoutes(
         secretEnc,
         rpm: parsed.data.rpm ?? existing.rpm,
         maxConcurrency: parsed.data.maxConcurrency ?? existing.maxConcurrency,
+        proxyUrl: parsed.data.proxyUrl ?? existing.proxyUrl,
         enabled: parsed.data.enabled ?? existing.enabled,
       })
       .where(eq(serviceInstances.id, request.params.id))
@@ -138,7 +141,7 @@ export function registerServiceRoutes(
         const fullConfig = loadFullConfig(row, config.appSecret);
         const sample = await service.translate('테스트', 'ko', 'zh_cn', {
           config: fullConfig,
-          http: defaultHttpClient,
+          http: wrapWithInstanceProxy(defaultHttpClient, row.proxyUrl ?? undefined),
         });
         return reply.send({ ok: true, sample });
       } catch (err) {

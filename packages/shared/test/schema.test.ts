@@ -63,13 +63,23 @@ describe('JobOptions schema', () => {
 });
 
 describe('JobStatus', () => {
-  it('accepts the M1 state machine values', () => {
-    for (const s of ['queued', 'parsing', 'translating', 'done', 'failed', 'paused', 'canceled']) {
+  it('accepts the M1/M2 state machine values', () => {
+    for (const s of [
+      'queued',
+      'parsing',
+      'awaiting_glossary',
+      'translating',
+      'awaiting_review',
+      'done',
+      'failed',
+      'paused',
+      'canceled',
+    ]) {
       expect(JobStatus.safeParse(s).success).toBe(true);
     }
   });
-  it('rejects M2/M3-only states', () => {
-    expect(JobStatus.safeParse('awaiting_glossary').success).toBe(false);
+  it('rejects M3-only states（LLM 审校轮尚未实现）', () => {
+    expect(JobStatus.safeParse('reviewing').success).toBe(false);
   });
 });
 

@@ -4,6 +4,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { DB } from '../db/client.js';
 import { users } from '../db/schema.js';
 import type { AppConfig } from '../config.js';
+import { findByTokenPlaintext } from '../db/tokens-repo.js';
+import { isApiTokenFormat } from './tokens.js';
 
 export const SESSION_COOKIE = 'sf_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 天
@@ -93,6 +95,22 @@ function loadSessionUser(request: FastifyRequest, db: DB): SessionUser | undefin
   return { id: row.id, username: row.username, role: row.role };
 }
 
+/**
+ * 脚本调用用 `Authorization: Bearer <token>`（readme.md 7.2），token 在 apps/server/src/db/tokens-repo.ts
+ * 里只以哈希存储，这里反查命中后顺带刷新 last_used_at。
+ */
+function loadBearerUser(request: FastifyRequest, db: DB): SessionUser | undefined {
+  const header = request.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return undefined;
+  const token = header.slice('Bearer '.length).trim();
+  if (!isApiTokenFormat(token)) return undefined;
+  const tokenRow = findByTokenPlaintext(db, token);
+  if (!tokenRow) return undefined;
+  const row = db.select().from(users).where(eq(users.id, tokenRow.userId)).get();
+  if (!row) return undefined;
+  return { id: row.id, username: row.username, role: row.role };
+}
+
 declare module 'fastify' {
   interface FastifyRequest {
     user?: SessionUser;
@@ -107,9 +125,9 @@ export function createRequireAuth(db: DB, config: AppConfig) {
   return async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     if (config.authMode === 'none') return;
 
-    const user = loadSessionUser(request, db);
+    const user = loadBearerUser(request, db) ?? loadSessionUser(request, db);
     if (!user) {
-      await reply.code(401).send({ error: 'unauthorized', message: '请先登录' });
+      await reply.code(401).send({ error: 'unauthorized', message: '请先登录，或使用 Authorization: Bearer <token>' });
       return;
     }
     request.user = user;
@@ -118,5 +136,5 @@ export function createRequireAuth(db: DB, config: AppConfig) {
 
 /** 供路由内部按需读取当前登录用户（requireAuth 之后调用才有值；none 模式下始终为 undefined）。 */
 export function getCurrentUser(request: FastifyRequest, db: DB): SessionUser | undefined {
-  return request.user ?? loadSessionUser(request, db);
+  return request.user ?? loadBearerUser(request, db) ?? loadSessionUser(request, db);
 }

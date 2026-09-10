@@ -85,4 +85,31 @@ describe('postprocessCue', () => {
     const result = postprocessCue(cue);
     expect(result.flags).toContain('cps-exceeded');
   });
+
+  it('outputMode=zh-top 时输出双语，原文来自 restoreTags(source)', () => {
+    const cue: Cue = {
+      ...makeDoneCue('你好'),
+      source: '⟨1⟩Hello⟨2⟩',
+      placeholders: ['<i>', '</i>'],
+      leadingTags: '',
+    };
+    const result = postprocessCue(cue, { outputMode: 'zh-top' });
+    expect(result.target).toBe('你好\n<i>Hello</i>');
+  });
+
+  it('阅读速度检查只统计中文部分，不把双语的原文行算进去', () => {
+    // 中文部分本身很短（低于阈值），原文部分很长；如果错误地把两行都计入字数就会被误判超限。
+    const cue: Cue = {
+      ...makeDoneCue('你好', 0, 1000),
+      source: 'This is a very long original line that would exceed cps if counted',
+    };
+    const result = postprocessCue(cue, { outputMode: 'zh-top', maxCharsPerSecond: 9 });
+    expect(result.flags).not.toContain('cps-exceeded');
+  });
+
+  it('opencc=s2t 把输出转换为繁体', () => {
+    const cue = makeDoneCue('汉字');
+    const result = postprocessCue(cue, { opencc: 's2t' });
+    expect(result.target).toBe('漢字');
+  });
 });

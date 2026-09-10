@@ -43,6 +43,7 @@ export function toServiceInstanceView(row: ServiceInstanceRow, appSecret: string
     config: { ...nonSecret, ...masked },
     rpm: row.rpm,
     maxConcurrency: row.maxConcurrency,
+    proxyUrl: row.proxyUrl,
     enabled: row.enabled,
     createdAt: row.createdAt,
   };

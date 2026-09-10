@@ -120,6 +120,18 @@ function buildTranslateService(name: string, displayName: string, configSchema: 
         opts,
       );
     },
+
+    async chat(system, user, opts) {
+      const config = opts.config as unknown as OpenAIConfig;
+      return callChatCompletions(
+        config,
+        [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        opts,
+      );
+    },
   };
 }
 

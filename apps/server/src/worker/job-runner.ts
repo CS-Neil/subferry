@@ -3,7 +3,6 @@ import {
   defaultHttpClient,
   runPipeline,
   postprocessDocument,
-  writeSubtitle,
   type SubtitleDocument,
   type BatchOutcome,
 } from '@subferry/core';
@@ -12,22 +11,18 @@ import type { DB } from '../db/client.js';
 import { getJobRow, setJobStatus, updateJobProgress } from '../db/jobs-repo.js';
 import { listCuesForJob, rowToCue, saveCueResults } from '../db/cues-repo.js';
 import { getServiceInstanceRow, loadFullConfig } from '../db/service-instances-repo.js';
+import { listConfirmedGlossary } from '../db/glossary-repo.js';
+import { getProjectRow } from '../db/projects-repo.js';
 import { batches } from '../db/schema.js';
 import type { AppConfig } from '../config.js';
 import type { EventsBus } from './events-bus.js';
 import { getLimiter, limitHttpClient } from './limiter.js';
-import { outputFilePath, saveFile } from '../io/storage.js';
+import { wrapWithInstanceProxy } from '../net/proxy.js';
+import { writeJobOutput } from './finalize.js';
 
 function displayName(langKey: string | null | undefined): string {
   if (!langKey) return '未知语言';
   return LANGUAGE_DISPLAY_NAMES[langKey] ?? langKey;
-}
-
-function defaultOutputName(fileName: string): string {
-  const dot = fileName.lastIndexOf('.');
-  const base = dot === -1 ? fileName : fileName.slice(0, dot);
-  const ext = dot === -1 ? 'srt' : fileName.slice(dot + 1);
-  return `${base}.zh.${ext}`;
 }
 
 export interface JobRunnerContext {
@@ -70,14 +65,19 @@ export async function runJob(ctx: JobRunnerContext, jobId: string, signal: Abort
     format: jobRow.format as SubtitleDocument['format'],
     sourceEncoding: jobRow.encoding ?? 'UTF-8',
     eol: (jobRow.eol as SubtitleDocument['eol']) ?? '\n',
-    header: '',
+    header: jobRow.header,
     cues: allCues.map((c) => (c.status === 'done' ? { ...c, translatable: false } : c)),
   };
 
   const options = JSON.parse(jobRow.optionsJson) as JobOptions;
   const fullConfig = loadFullConfig(serviceRow, config.appSecret);
   const limiter = getLimiter(serviceRow.id, serviceRow.rpm, serviceRow.maxConcurrency);
-  const http = limitHttpClient(defaultHttpClient, limiter);
+  const http = limitHttpClient(wrapWithInstanceProxy(defaultHttpClient, serviceRow.proxyUrl ?? undefined), limiter);
+
+  const project = jobRow.projectId ? getProjectRow(db, jobRow.projectId) : undefined;
+  const glossaryEntries = jobRow.projectId
+    ? listConfirmedGlossary(db, jobRow.projectId).map((e) => ({ source: e.source, target: e.target }))
+    : [];
 
   setJobStatus(db, jobId, 'translating', { startedAt: jobRow.startedAt ?? new Date().toISOString() });
   bus.emitJobEvent({ type: 'status', jobId, status: 'translating' });
@@ -127,6 +127,8 @@ export async function runJob(ctx: JobRunnerContext, jobId: string, signal: Abort
         contextBefore: options.contextBefore,
         contextAfter: options.contextAfter,
         maxRetries: options.maxRetries,
+        synopsis: project?.synopsis ?? undefined,
+        glossaryEntries,
       },
       service,
       { config: fullConfig, http, signal },
@@ -142,6 +144,8 @@ export async function runJob(ctx: JobRunnerContext, jobId: string, signal: Abort
     const postprocessed = postprocessDocument(translated, {
       maxCharsPerLine: options.maxCharsPerLine,
       maxCharsPerSecond: options.maxCharsPerSecond,
+      opencc: options.opencc,
+      outputMode: options.outputMode,
     });
     saveCueResults(
       db,
@@ -151,11 +155,14 @@ export async function runJob(ctx: JobRunnerContext, jobId: string, signal: Abort
         .map((c) => ({ id: c.id, status: c.status, target: c.target ?? '', flags: c.flags })),
     );
 
-    const outPath = outputFilePath(config.dataDir, jobId, defaultOutputName(jobRow.fileName));
-    saveFile(outPath, writeSubtitle(postprocessed));
+    const outPath = writeJobOutput(db, config, jobId);
 
-    setJobStatus(db, jobId, 'done', { outputPath: outPath, finishedAt: new Date().toISOString(), error: null });
-    bus.emitJobEvent({ type: 'status', jobId, status: 'done' });
+    // 待校对是默认行为（readme.md 6章 awaiting_review），skipReview=true 时才直接完成。
+    // 无论哪种，都先把当前译文写出一次；如果后续在校对页编辑了条目，"确认完成"时会重新写一次
+    // （见 worker/finalize.ts），download 接口始终读的是这份文件，不会漏掉编辑。
+    const finalStatus = options.skipReview ? 'done' : 'awaiting_review';
+    setJobStatus(db, jobId, finalStatus, { outputPath: outPath, finishedAt: new Date().toISOString(), error: null });
+    bus.emitJobEvent({ type: 'status', jobId, status: finalStatus });
   } catch (err) {
     if (signal.aborted) return;
     const message = err instanceof Error ? err.message : String(err);

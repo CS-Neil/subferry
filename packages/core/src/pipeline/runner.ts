@@ -12,6 +12,11 @@ import { translateWithRetry, type CueResult } from './retry.js';
  * M1 只实现标准模式（同批内条目按批并行请求）；精翻模式（严格顺序、上下文含已完成译文）
  * 是 M2 范围，chunkCues/getContext 的接口已经为它预留（context.ts 顶部注释）。
  */
+export interface GlossaryEntryLite {
+  source: string;
+  target: string;
+}
+
 export interface RunPipelineOptions extends ChunkOptions {
   contextBefore?: number;
   contextAfter?: number;
@@ -19,7 +24,18 @@ export interface RunPipelineOptions extends ChunkOptions {
   from: string;
   to: string;
   synopsis?: string;
-  glossary?: string;
+  /**
+   * 项目里已确认的术语表全集；每批只携带本批原文里实际出现的词条（readme.md 4.7"用量控制"），
+   * 在这里按批过滤、渲染成 "$source → $target" 的文本，而不是把整份术语表都塞进每次请求。
+   */
+  glossaryEntries?: GlossaryEntryLite[];
+}
+
+function renderGlossaryForBatch(entries: GlossaryEntryLite[] | undefined, batchText: string): string | undefined {
+  if (!entries || entries.length === 0) return undefined;
+  const relevant = entries.filter((e) => batchText.includes(e.source));
+  if (relevant.length === 0) return undefined;
+  return relevant.map((e) => `${e.source} → ${e.target}`).join('\n');
 }
 
 export interface BatchOutcome {
@@ -39,13 +55,14 @@ export async function runPipeline(
 
   const batchPromises = batches.map(async (batch) => {
     const ctx = getContext(doc.cues, batch, options.contextBefore, options.contextAfter);
+    const batchText = batch.items.map((c) => c.source).join('\n');
     const results = await translateWithRetry(batch.items, {
       service,
       callOptions,
       from: options.from,
       to: options.to,
       synopsis: options.synopsis,
-      glossary: options.glossary,
+      glossary: renderGlossaryForBatch(options.glossaryEntries, batchText),
       contextBefore: ctx.before,
       contextAfter: ctx.after,
       maxRetries: options.maxRetries ?? 2,

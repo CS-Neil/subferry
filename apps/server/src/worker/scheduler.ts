@@ -1,8 +1,9 @@
 import type { DB } from '../db/client.js';
 import type { AppConfig } from '../config.js';
-import { nextQueuedJobRow, setJobStatus } from '../db/jobs-repo.js';
+import { nextSchedulableJobRow, setJobStatus } from '../db/jobs-repo.js';
 import type { EventsBus } from './events-bus.js';
 import { runJob } from './job-runner.js';
+import { runGlossaryPhase } from './glossary-runner.js';
 
 interface ActiveEntry {
   controller: AbortController;
@@ -11,9 +12,9 @@ interface ActiveEntry {
 }
 
 /**
- * 任务调度器（readme.md 7.1）：FIFO 取出 queued 任务，同时执行的任务数上限由
- * MAX_ACTIVE_JOBS 控制。暂停/取消通过 AbortController 中断；job-runner 在检测到
- * 中断时不会写最终状态，由这里根据"是暂停还是取消"补写。
+ * 任务调度器（readme.md 7.1）：FIFO 取出 queued（等待翻译）和 parsing（等待术语提取，见
+ * worker/glossary-runner.ts）任务，两者共用同一个 MAX_ACTIVE_JOBS 并发池。暂停/取消通过
+ * AbortController 中断；runner 在检测到中断时不会写最终状态，由这里根据"是暂停还是取消"补写。
  */
 export class Scheduler {
   private active = new Map<string, ActiveEntry>();
@@ -39,17 +40,18 @@ export class Scheduler {
 
   private tick(): void {
     while (this.active.size < this.config.maxActiveJobs) {
-      const next = nextQueuedJobRow(this.db);
+      const next = nextSchedulableJobRow(this.db, [...this.active.keys()]);
       if (!next) return;
-      this.start(next.id);
+      this.start(next.id, next.status as 'queued' | 'parsing');
     }
   }
 
-  private start(jobId: string): void {
+  private start(jobId: string, status: 'queued' | 'parsing'): void {
     const controller = new AbortController();
     const entry: ActiveEntry = { controller, promise: Promise.resolve() };
+    const runner = status === 'parsing' ? runGlossaryPhase : runJob;
 
-    entry.promise = runJob({ db: this.db, config: this.config, bus: this.bus }, jobId, controller.signal)
+    entry.promise = runner({ db: this.db, config: this.config, bus: this.bus }, jobId, controller.signal)
       .catch((err) => {
         setJobStatus(this.db, jobId, 'failed', {
           error: err instanceof Error ? err.message : String(err),

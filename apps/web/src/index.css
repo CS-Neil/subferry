@@ -90,3 +90,15 @@
     background-position: -150% center;
   }
 }
+
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes border-trail-spin {
+  to {
+    --angle: 360deg;
+  }
+}

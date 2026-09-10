@@ -1,10 +1,11 @@
-import { useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useJobEvents } from '@/lib/sse';
 import { RequireAuth } from '@/components/app/require-auth';
 import { JobStatusBadge } from '@/components/app/job-status-badge';
 import { AnimatedNumber } from '@/components/motion/animated-number';
+import { TextMorph } from '@/components/motion/text-morph';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,6 +21,8 @@ function JobDetailInner({ jobId }: { jobId: string }) {
   const resume = useMutation({ mutationFn: () => api.jobs.resume(jobId), onSuccess: invalidate });
   const cancel = useMutation({ mutationFn: () => api.jobs.cancel(jobId), onSuccess: invalidate });
   const retry = useMutation({ mutationFn: () => api.jobs.retryFailed(jobId), onSuccess: invalidate });
+  const confirm = useMutation({ mutationFn: () => api.jobs.confirm(jobId), onSuccess: invalidate });
+  const confirmGlossary = useMutation({ mutationFn: () => api.jobs.confirmGlossary(jobId), onSuccess: invalidate });
 
   if (isLoading || !job) return <p className="text-sm text-muted-foreground">加载中…</p>;
 
@@ -37,6 +40,42 @@ function JobDetailInner({ jobId }: { jobId: string }) {
         </div>
         <JobStatusBadge status={job.status} />
       </div>
+
+      {job.status === 'awaiting_glossary' && (
+        <Alert>
+          <AlertTitle>有新术语待确认</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-2">
+            <span>去项目的术语表页检查候选译名，确认后任务会自动继续翻译。</span>
+            <div className="flex gap-2">
+              {job.projectId && (
+                <Link to="/projects/$projectId" params={{ projectId: job.projectId }} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                  查看术语表
+                </Link>
+              )}
+              <Button size="sm" onClick={() => confirmGlossary.mutate()} disabled={confirmGlossary.isPending}>
+                确认并继续
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {job.status === 'awaiting_review' && (
+        <Alert>
+          <AlertTitle>翻译完成，待校对</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-2">
+            <span>可以先去对照校对页检查/修改译文，确认完成后再下载。</span>
+            <div className="flex gap-2">
+              <Link to="/jobs/$jobId/review" params={{ jobId }} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                去校对
+              </Link>
+              <Button size="sm" onClick={() => confirm.mutate()} disabled={confirm.isPending}>
+                确认完成
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardContent className="flex flex-col gap-3 py-4">
@@ -63,12 +102,12 @@ function JobDetailInner({ jobId }: { jobId: string }) {
       <div className="flex flex-wrap gap-2">
         {job.status === 'translating' && (
           <Button variant="outline" onClick={() => pause.mutate()} disabled={pause.isPending}>
-            暂停
+            <TextMorph>暂停</TextMorph>
           </Button>
         )}
         {job.status === 'paused' && (
           <Button onClick={() => resume.mutate()} disabled={resume.isPending}>
-            继续
+            <TextMorph>继续</TextMorph>
           </Button>
         )}
         {running && (
@@ -76,10 +115,15 @@ function JobDetailInner({ jobId }: { jobId: string }) {
             取消
           </Button>
         )}
-        {(job.status === 'failed' || (job.status === 'done' && job.progress.failedCues > 0)) && (
+        {(job.status === 'failed' || job.progress.failedCues > 0) && (
           <Button variant="outline" onClick={() => retry.mutate()} disabled={retry.isPending}>
             重试失败条目
           </Button>
+        )}
+        {(job.status === 'done' || job.status === 'awaiting_review') && (
+          <Link to="/jobs/$jobId/review" params={{ jobId }} className={buttonVariants({ variant: 'outline' })}>
+            对照校对
+          </Link>
         )}
         {job.status === 'done' && (
           <a href={api.jobs.downloadUrl(jobId)} className={buttonVariants()}>

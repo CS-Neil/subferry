@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TransitionPanel } from '@/components/motion/transition-panel';
 
 /**
  * 新建一个翻译服务实例。国内外主流大模型都注册为预设（configSchema 里没有 baseURL，
@@ -71,7 +72,11 @@ export function CreateServiceForm({ onCreated, title = '新建翻译服务' }: {
           <Label htmlFor="displayName">显示名称</Label>
           <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         </div>
-        {selected && <SchemaForm schema={selected.configSchema} value={config} onChange={setConfig} />}
+        {selected && (
+          <TransitionPanel activeKey={serviceName}>
+            <SchemaForm schema={selected.configSchema} value={config} onChange={setConfig} />
+          </TransitionPanel>
+        )}
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>

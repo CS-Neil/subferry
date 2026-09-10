@@ -5,12 +5,18 @@ import { users } from './db/schema.js';
 import { buildApp } from './app.js';
 import { recoverInterruptedJobs } from './worker/recovery.js';
 import { hashPassword, isInitialized } from './security/auth.js';
+import { setupGlobalProxy } from './net/proxy.js';
 
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 20_000;
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const { db } = openDb({ file: join(config.dataDir, 'subferry.db') });
+
+  if (setupGlobalProxy()) {
+    // eslint-disable-next-line no-console
+    console.log('已启用全局出站代理（HTTPS_PROXY/HTTP_PROXY），未单独设置代理的服务实例都会走这里');
+  }
 
   // AUTH_MODE=single 且设置了 ADMIN_PASSWORD 时自动创建管理员账号（readme.md 7.4）；
   // 否则前端首次访问会进入初始化页面，调用 POST /api/auth/init 手动设置。

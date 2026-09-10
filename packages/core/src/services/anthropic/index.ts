@@ -94,4 +94,9 @@ export const claudeService: TranslateService = {
     const { system, user } = renderPrompt(req);
     return callMessages(config, system, user, opts);
   },
+
+  async chat(system, user, opts) {
+    const config = opts.config as unknown as AnthropicConfig;
+    return callMessages(config, system, user, opts);
+  },
 };

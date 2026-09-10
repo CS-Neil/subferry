@@ -48,7 +48,7 @@ describe('启动恢复：从断点继续，不重复翻译已完成条目', () =
         progressFailed: 0,
         origin: 'web',
         serviceInstanceId: 'mock@recovery',
-        optionsJson: JSON.stringify(JobOptions.parse({})),
+        optionsJson: JSON.stringify(JobOptions.parse({ skipReview: true })),
         createdAt: now,
         updatedAt: now,
       })

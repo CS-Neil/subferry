@@ -15,6 +15,9 @@ import { registerServiceRoutes } from './routes/services.js';
 import { registerJobRoutes } from './routes/jobs.js';
 import { registerEventRoutes } from './routes/events.js';
 import { registerHealthRoute } from './routes/health.js';
+import { registerProjectRoutes } from './routes/projects.js';
+import { registerProfileRoutes } from './routes/profiles.js';
+import { registerTokenRoutes } from './routes/tokens.js';
 
 export interface BuildAppDeps {
   db: DB;
@@ -52,6 +55,9 @@ export async function buildApp(deps: BuildAppDeps): Promise<AppInstance> {
   registerServiceRoutes(app, db, config, requireAuth);
   registerJobRoutes(app, db, config, scheduler, requireAuth);
   registerEventRoutes(app, bus, requireAuth);
+  registerProjectRoutes(app, db, scheduler, requireAuth);
+  registerProfileRoutes(app, db, requireAuth);
+  registerTokenRoutes(app, db, requireAuth);
 
   if (config.authMode === 'none') {
     app.log.warn('AUTH_MODE=none：认证已关闭，仅适用于只在可信内网访问的场景！');

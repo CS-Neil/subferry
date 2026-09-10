@@ -25,11 +25,20 @@ export interface MockCallCounter {
   count: number;
 }
 
+export interface MockGlossaryCandidate {
+  source: string;
+  target: string;
+  type: 'person' | 'place' | 'organization' | 'term' | 'other';
+  note?: string;
+}
+
 export interface MockConfig {
   prefix?: string;
   faults?: MockFault[];
   failTimes?: number;
   counter?: MockCallCounter; // 由测试代码创建并传入，用于断言调用次数（例如验证重启恢复不重复调用）
+  /** 供术语提取（chat）测试用：固定返回这份候选列表，不管实际传入的文本是什么。 */
+  mockGlossaryResponse?: MockGlossaryCandidate[];
 }
 
 /**
@@ -109,5 +118,11 @@ export const mockService: TranslateService = {
     }
 
     return JSON.stringify(entries);
+  },
+
+  /** 术语提取用：默认返回空数组（不产生候选术语），测试可通过 config.mockGlossaryResponse 指定固定候选。 */
+  async chat(_system, _user, opts) {
+    const config = (opts.config ?? {}) as MockConfig;
+    return JSON.stringify(config.mockGlossaryResponse ?? []);
   },
 };

@@ -7,10 +7,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TextMorph } from '@/components/motion/text-morph';
 
-function ServiceRow({ id, displayName, serviceName, enabled }: { id: string; displayName: string; serviceName: string; enabled: boolean }) {
+function ServiceRow({
+  id,
+  displayName,
+  serviceName,
+  enabled,
+  proxyUrl,
+}: {
+  id: string;
+  displayName: string;
+  serviceName: string;
+  enabled: boolean;
+  proxyUrl: string | null;
+}) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [editingProxy, setEditingProxy] = useState(false);
+  const [proxyValue, setProxyValue] = useState(proxyUrl ?? '');
 
   const test = useMutation({
     mutationFn: () => api.services.test(id),
@@ -21,6 +38,13 @@ function ServiceRow({ id, displayName, serviceName, enabled }: { id: string; dis
     mutationFn: () => api.services.remove(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['services'] }),
   });
+  const saveProxy = useMutation({
+    mutationFn: () => api.services.update(id, { proxyUrl: proxyValue }),
+    onSuccess: () => {
+      setEditingProxy(false);
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+  });
 
   return (
     <Card>
@@ -30,18 +54,38 @@ function ServiceRow({ id, displayName, serviceName, enabled }: { id: string; dis
             <p className="font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">
               {serviceName} · {id}
+              {proxyUrl && ` · 代理：${proxyUrl}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {!enabled && <Badge variant="outline">已停用</Badge>}
+            <Button variant="outline" size="sm" onClick={() => setEditingProxy((v) => !v)}>
+              代理
+            </Button>
             <Button variant="outline" size="sm" onClick={() => test.mutate()} disabled={test.isPending}>
-              {test.isPending ? '测试中…' : '测试连接'}
+              <TextMorph>{test.isPending ? '测试中…' : message?.startsWith('连接成功') ? '连接成功' : '测试连接'}</TextMorph>
             </Button>
             <Button variant="destructive" size="sm" onClick={() => remove.mutate()} disabled={remove.isPending}>
               删除
             </Button>
           </div>
         </div>
+        {editingProxy && (
+          <div className="flex items-end gap-2">
+            <div className="flex flex-1 flex-col gap-1">
+              <Label htmlFor={`proxy-${id}`}>实例代理地址（只对这个实例生效，留空则走全局代理/直连）</Label>
+              <Input
+                id={`proxy-${id}`}
+                placeholder="http://127.0.0.1:7890"
+                value={proxyValue}
+                onChange={(e) => setProxyValue(e.target.value)}
+              />
+            </div>
+            <Button size="sm" onClick={() => saveProxy.mutate()} disabled={saveProxy.isPending}>
+              保存
+            </Button>
+          </div>
+        )}
         {message && <p className="text-xs text-muted-foreground">{message}</p>}
       </CardContent>
     </Card>
@@ -64,7 +108,14 @@ function ServicesInner() {
 
       <div className="flex flex-col gap-3">
         {services?.map((s) => (
-          <ServiceRow key={s.id} id={s.id} displayName={s.displayName} serviceName={s.serviceName} enabled={s.enabled} />
+          <ServiceRow
+            key={s.id}
+            id={s.id}
+            displayName={s.displayName}
+            serviceName={s.serviceName}
+            enabled={s.enabled}
+            proxyUrl={s.proxyUrl}
+          />
         ))}
       </div>
 

@@ -4,8 +4,10 @@ import { TextShimmer } from '@/components/motion/text-shimmer';
 
 const STATUS_LABEL: Record<JobSummary['status'], string> = {
   queued: '排队中',
-  parsing: '解析中',
+  parsing: '提取术语中',
+  awaiting_glossary: '待确认术语',
   translating: '翻译中',
+  awaiting_review: '待校对',
   done: '已完成',
   failed: '失败',
   paused: '已暂停',
@@ -15,7 +17,9 @@ const STATUS_LABEL: Record<JobSummary['status'], string> = {
 const STATUS_VARIANT: Record<JobSummary['status'], BadgeVariant> = {
   queued: 'secondary',
   parsing: 'secondary',
+  awaiting_glossary: 'warning',
   translating: 'default',
+  awaiting_review: 'warning',
   done: 'success',
   failed: 'destructive',
   paused: 'warning',
