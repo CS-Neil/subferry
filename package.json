@@ -1,0 +1,21 @@
+{
+  "name": "subferry",
+  "private": true,
+  "version": "0.1.0",
+  "description": "字渡 SubFerry - 用大语言模型将外语字幕翻译为中文的 Web 服务",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "dev:server": "pnpm --filter @subferry/server dev",
+    "dev:web": "pnpm --filter @subferry/web dev",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

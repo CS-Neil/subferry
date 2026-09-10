@@ -1,0 +1,21 @@
+# Nginx 反向代理示例（readme.md 10.4）。
+server {
+    listen 443 ssl http2;
+    server_name sub.example.com;
+    # ssl_certificate ...; ssl_certificate_key ...;
+
+    client_max_body_size 50m; # 允许一次上传多个字幕
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 1h; # SSE 长连接
+    }
+}
+
+# 服务端在 SSE 响应中会带上 X-Accel-Buffering: no 头，Nginx 看到后会自动关闭该响应的缓冲，
+# 因此不需要为 SSE 单独写 location。服务端还会每 15 秒发送一次心跳注释，防止中间设备断开空闲连接。

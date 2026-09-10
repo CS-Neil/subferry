@@ -1,0 +1,26 @@
+services:
+  subferry:
+    image: subferry:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: subferry
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080" # 只监听本机，由反向代理对外（见 Caddyfile.example）
+    environment:
+      APP_SECRET: "请替换为随机字符串，生成方法：openssl rand -base64 48"
+      ADMIN_PASSWORD: "请替换为初始管理员密码"
+      TZ: Asia/Shanghai
+      BASE_URL: https://sub.example.com
+      # HTTPS_PROXY: http://172.17.0.1:7890   # M2/M3 生效，M1 尚未实现代理支持
+      # NO_PROXY: localhost,127.0.0.1,ollama
+    volumes:
+      - ./data:/data
+      # - /srv/media:/media          # 可选：监控目录模式用的媒体库（M3 功能，M1 未实现）
+    user: "1000:1000" # 与宿主机上 ./data 目录的属主一致
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -1,0 +1,15 @@
+[Unit]
+Description=SubFerry subtitle translation service
+After=network-online.target
+
+[Service]
+User=subferry
+WorkingDirectory=/opt/subferry
+EnvironmentFile=/etc/subferry.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

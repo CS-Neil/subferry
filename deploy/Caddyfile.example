@@ -1,0 +1,4 @@
+# Caddy 反向代理示例（readme.md 10.4）：自动申请 HTTPS 证书，并能正确转发 SSE。
+sub.example.com {
+    reverse_proxy 127.0.0.1:8080
+}
