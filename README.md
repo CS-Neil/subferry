@@ -20,10 +20,15 @@ pnpm --filter @subferry/web dev
 ```
 
 浏览器打开 `http://localhost:5173`：首次访问会要求设置管理员密码（若已经设置了
-`ADMIN_PASSWORD` 环境变量，服务启动时会自动创建好管理员账号，直接登录即可）。登录后先在
-"新建任务"页创建一个服务实例——本机没有大模型 API Key 时，选择内置的 **mock（模拟服务）**
-即可跑通整条翻译流程（不产生任何费用，也不需要联网）；有真实的 OpenAI 兼容接口时，选择
-**OpenAI 兼容** 并填写 baseURL / apiKey / model。
+`ADMIN_PASSWORD` 环境变量，服务启动时会自动创建好管理员账号，直接登录即可）。登录后先去
+"服务设置"页添加一个翻译服务：
+- 本机没有大模型 API Key 时，选择内置的 **mock（模拟服务）**，即可跑通整条翻译流程（不产生
+  任何费用，也不需要联网）。
+- 有真实 API Key 时，直接选对应的服务商——**OpenAI、DeepSeek、通义千问、Kimi、智谱 GLM、
+  豆包、Google Gemini** 都是预设好 baseURL/默认模型的，只需要填 API Key；不在预设列表里的
+  中转站/自建代理用 **通用 OpenAI 兼容（自定义地址）**；**Claude** 走的是 Anthropic 官方
+  Messages API（不是 OpenAI 协议）。
+新建任务时源语言是下拉选择（留空即自动检测），目标语言 M1 固定为中文。
 
 ## 验证
 
@@ -58,7 +63,9 @@ docker compose up --build -d
 
 **已实现：**
 - 字幕格式：SRT 无损解析/写出（ASS/VTT 接口占位，M2 再实现）
-- 翻译服务：OpenAI 兼容 + 内置 mock（Claude/Gemini/Ollama/DeepL/通用HTTP 是 M3 范围）
+- 翻译服务：OpenAI、DeepSeek、通义千问、Kimi、智谱 GLM、豆包、Google Gemini（均为预设
+  baseURL，只需填 API Key）+ 通用 OpenAI 兼容（自定义地址）+ Claude（真正的 Anthropic
+  Messages API）+ 内置 mock。故障切换链、Ollama、DeepL 是 M2/M3 范围
 - 核心流水线：分批编排、id-JSON 协议、逐级降级重试（部分接受→整批重试→二分拆批→标记失败）、
   占位符保护、后处理（标点规范/折行/阅读速度标记）
 - 服务端：Fastify + SQLite（WAL）+ Drizzle、单管理员认证、AES-256-GCM 密钥加密、按服务实例的

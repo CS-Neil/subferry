@@ -4,6 +4,7 @@ import { LoginPage } from './routes/login';
 import { JobsListPage } from './routes/jobs';
 import { NewJobPage } from './routes/jobs.new';
 import { JobDetailPage } from './routes/jobs.$id';
+import { ServicesPage } from './routes/services';
 
 /**
  * 用 TanStack Router 的代码式 API（而不是文件路由 + @tanstack/router-plugin 的生成器）：
@@ -15,8 +16,9 @@ const jobsIndexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/',
 const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login', component: LoginPage });
 const jobsNewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/jobs/new', component: NewJobPage });
 const jobDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/jobs/$jobId', component: JobDetailPage });
+const servicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/services', component: ServicesPage });
 
-const routeTree = rootRoute.addChildren([jobsIndexRoute, loginRoute, jobsNewRoute, jobDetailRoute]);
+const routeTree = rootRoute.addChildren([jobsIndexRoute, loginRoute, jobsNewRoute, jobDetailRoute, servicesRoute]);
 
 export const router = createRouter({ routeTree });
 

@@ -33,6 +33,13 @@ export function RootLayout() {
               >
                 新建任务
               </Link>
+              <Link
+                to="/services"
+                className="text-muted-foreground hover:text-foreground"
+                activeProps={{ className: 'text-foreground font-medium' }}
+              >
+                服务设置
+              </Link>
               {data.username && <span className="text-muted-foreground">{data.username}</span>}
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 退出登录

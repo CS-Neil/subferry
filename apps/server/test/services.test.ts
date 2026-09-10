@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildTestApp, type TestApp } from './helpers.js';
-import { getServiceInstanceRow } from '../src/db/service-instances-repo.js';
+import { getServiceInstanceRow, loadFullConfig } from '../src/db/service-instances-repo.js';
 
 async function loginAsNewAdmin(testApp: TestApp): Promise<string> {
   const res = await testApp.app.inject({
@@ -92,7 +92,7 @@ describe('服务实例管理', () => {
   });
 
   it('PUT 更新只改动提供的字段，不清空未提供的密钥', async () => {
-    const { app } = testApp;
+    const { app, db, config } = testApp;
     await app.inject({
       method: 'POST',
       url: '/api/services',
@@ -118,9 +118,12 @@ describe('服务实例管理', () => {
     expect(put.json().displayName).toBe('OpenAI（改名）');
     expect(put.json().config.apiKey).toMatch(/mnop|key-|value|\*/); // 仍然是脱敏但非空的形式
 
-    const full = await app.inject({ method: 'POST', url: '/api/services/openai@u/test', headers: { cookie } });
-    // mock/openai 的 translate() 对假 baseURL 会请求失败，这里只验证密钥仍然存在（未被清空导致请求体缺 key）
-    expect([200, 502]).toContain(full.statusCode);
+    // 直接读库验证密钥没有被清空（而不是真的发一个网络请求去验证——'openai' 现在是固定
+    // 官方地址的预设，真打一次会打到 api.openai.com，拖慢测试又依赖外网）。
+    const row = getServiceInstanceRow(db, 'openai@u');
+    expect(row?.secretEnc).toBeTruthy();
+    const fullConfig = loadFullConfig(row!, config.appSecret);
+    expect(fullConfig.apiKey).toBe('sk-original-key-value');
   });
 
   it('POST /api/services/:id/test 对 mock 服务必定成功', async () => {

@@ -7,7 +7,7 @@ import {
   type SubtitleDocument,
   type BatchOutcome,
 } from '@subferry/core';
-import type { JobOptions } from '@subferry/shared';
+import { LANGUAGE_DISPLAY_NAMES, type JobOptions } from '@subferry/shared';
 import type { DB } from '../db/client.js';
 import { getJobRow, setJobStatus, updateJobProgress } from '../db/jobs-repo.js';
 import { listCuesForJob, rowToCue, saveCueResults } from '../db/cues-repo.js';
@@ -18,17 +18,9 @@ import type { EventsBus } from './events-bus.js';
 import { getLimiter, limitHttpClient } from './limiter.js';
 import { outputFilePath, saveFile } from '../io/storage.js';
 
-const LANG_DISPLAY_NAMES: Record<string, string> = {
-  ko: '韩语',
-  it: '意大利语',
-  en: '英语',
-  ja: '日语',
-  zh_cn: '中文',
-};
-
 function displayName(langKey: string | null | undefined): string {
   if (!langKey) return '未知语言';
-  return LANG_DISPLAY_NAMES[langKey] ?? langKey;
+  return LANGUAGE_DISPLAY_NAMES[langKey] ?? langKey;
 }
 
 function defaultOutputName(fileName: string): string {
